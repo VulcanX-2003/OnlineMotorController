@@ -1,0 +1,429 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#090a09">
+  <title>New Beginning | Motor Control</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700&display=swap');
+
+    :root {
+      color-scheme: dark;
+      --ink: #090a09;
+      --panel: #111310;
+      --line: #292c27;
+      --muted: #898d83;
+      --paper: #eeefe8;
+      --acid: #d5f36a;
+      --orange: #ff744f;
+      --mono: 'DM Mono', monospace;
+      --sans: 'Manrope', sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background-color: var(--ink);
+      background-image: radial-gradient(ellipse at 50% 42%, #171a13 0%, transparent 52%),
+        linear-gradient(#ffffff08 1px, transparent 1px),
+        linear-gradient(90deg, #ffffff08 1px, transparent 1px);
+      background-size: auto, 56px 56px, 56px 56px;
+      color: var(--paper);
+      font-family: var(--sans);
+    }
+
+    button, input { font: inherit; }
+
+    .page {
+      width: min(1120px, calc(100% - 48px));
+      min-height: 100vh;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .topbar {
+      height: 78px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .brand, .mode, .eyebrow, .readout-label, .dial-label, .footnote {
+      font-family: var(--mono);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+
+    .brand { display: flex; align-items: center; gap: 12px; font-size: 11px; }
+    .brand-mark { width: 10px; height: 10px; background: var(--acid); transform: rotate(45deg); }
+
+    .mode {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      color: var(--acid);
+      font-size: 10px;
+    }
+
+    .mode-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; box-shadow: 0 0 12px currentColor; }
+
+    main {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 390px;
+      align-items: center;
+      gap: clamp(42px, 8vw, 118px);
+      padding: 66px 0 76px;
+    }
+
+    .intro { animation: rise .75s both; }
+    .eyebrow { color: var(--acid); font-size: 10px; margin: 0 0 25px; }
+
+    h1 {
+      max-width: 650px;
+      margin: 0;
+      font-size: clamp(54px, 7.5vw, 100px);
+      font-weight: 500;
+      line-height: .96;
+      letter-spacing: -.055em;
+    }
+
+    h1 span { color: var(--acid); font-family: Georgia, serif; font-weight: 400; font-style: italic; }
+
+    .intro-copy {
+      max-width: 370px;
+      margin: 28px 0 0;
+      color: #a4a79d;
+      font-size: 14px;
+      line-height: 1.8;
+    }
+
+    .control-panel {
+      position: relative;
+      padding: 25px;
+      border: 1px solid #34372f;
+      background: linear-gradient(145deg, #151711 0%, #0c0d0b 72%);
+      box-shadow: 0 28px 90px #0009;
+      animation: rise .75s .12s both;
+    }
+
+    .panel-head { display: flex; justify-content: space-between; align-items: center; padding-bottom: 18px; border-bottom: 1px solid var(--line); }
+    .panel-title { margin: 0; font-size: 12px; font-weight: 600; }
+    .panel-index { color: var(--muted); font: 10px var(--mono); }
+
+    .dial-area { padding: 25px 0 22px; display: grid; justify-items: center; }
+    .dial-label { color: var(--muted); font-size: 9px; margin-bottom: 17px; }
+
+    .dial {
+      --angle: -135deg;
+      position: relative;
+      width: 190px;
+      aspect-ratio: 1;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: conic-gradient(from 225deg, var(--acid) 0deg, var(--acid) calc(var(--value, 0) * 2.7deg), #34372e calc(var(--value, 0) * 2.7deg), #34372e 270deg, transparent 270deg 360deg);
+      filter: drop-shadow(0 0 14px #d5f3291c);
+    }
+
+    .dial::before {
+      content: '';
+      position: absolute;
+      inset: 5px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 28%, #24271f, #11120f 70%);
+      border: 1px solid #41443a;
+    }
+
+    .dial::after {
+      content: '';
+      position: absolute;
+      width: 3px;
+      height: 20px;
+      top: 15px;
+      left: calc(50% - 1.5px);
+      border-radius: 3px;
+      background: var(--acid);
+      transform-origin: 50% 80px;
+      transform: rotate(var(--angle));
+      box-shadow: 0 0 9px #d5f36a;
+      pointer-events: none;
+    }
+
+    .dial input {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      opacity: 0;
+      cursor: grab;
+      touch-action: none;
+    }
+
+    .dial input:active { cursor: grabbing; }
+    .dial input:focus-visible { outline: 2px solid var(--acid); outline-offset: 7px; border-radius: 50%; }
+
+    .dial-center { z-index: 1; text-align: center; pointer-events: none; }
+    .dial-value { display: block; font-size: 42px; font-weight: 500; letter-spacing: -.06em; line-height: 1; }
+    .dial-unit { display: block; margin-top: 7px; color: var(--muted); font: 9px var(--mono); text-transform: uppercase; letter-spacing: .12em; }
+    .dial-scale { width: 218px; display: flex; justify-content: space-between; margin-top: 14px; color: #777b70; font: 9px var(--mono); }
+
+    .telemetry { display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+    .readout { padding: 14px 0; }
+    .readout + .readout { border-left: 1px solid var(--line); padding-left: 18px; }
+    .readout-label { display: block; color: var(--muted); font-size: 8px; margin-bottom: 7px; }
+    .readout-value { font: 13px var(--mono); }
+
+    .action-row { display: flex; align-items: center; justify-content: space-between; padding-top: 20px; }
+    .switch-copy { display: grid; gap: 4px; }
+    .switch-title { font-size: 11px; font-weight: 600; }
+    .switch-caption { color: var(--muted); font: 9px var(--mono); }
+
+    .switch {
+      width: 64px;
+      height: 34px;
+      padding: 4px;
+      border: 1px solid #515449;
+      border-radius: 20px;
+      background: #22241f;
+      cursor: pointer;
+      transition: background .2s, border-color .2s;
+    }
+
+    .switch::before { content: ''; display: block; width: 24px; height: 24px; border-radius: 50%; background: #999c91; transition: transform .2s, background .2s; }
+    .switch[aria-checked="true"] { background: #697c2d; border-color: var(--acid); }
+    .switch[aria-checked="true"]::before { transform: translateX(29px); background: var(--acid); box-shadow: 0 0 12px #d5f36966; }
+    .switch:focus-visible { outline: 2px solid var(--acid); outline-offset: 4px; }
+    .switch:disabled { cursor: not-allowed; opacity: .45; }
+
+    .login-form { display: flex; gap: 8px; padding: 17px 0 0; }
+    .login-form input { min-width: 0; flex: 1; padding: 10px 11px; border: 1px solid #41443a; border-radius: 2px; background: #0b0c0a; color: var(--paper); font: 10px var(--mono); }
+    .login-form input:focus-visible, .login-form button:focus-visible { outline: 2px solid var(--acid); outline-offset: 3px; }
+    .login-form button { padding: 0 13px; border: 1px solid var(--acid); border-radius: 2px; background: var(--acid); color: #14170c; cursor: pointer; font: 10px var(--mono); text-transform: uppercase; }
+    .login-form button:disabled { cursor: wait; opacity: .6; }
+    .connection-copy { min-height: 15px; margin: 8px 0 0; color: var(--muted); font: 9px var(--mono); }
+
+    .notice { margin: 17px 0 0; padding: 10px 11px; border-left: 2px solid var(--orange); background: #ff744f0c; color: #c0a49a; font-size: 10px; line-height: 1.55; }
+    .notice strong { color: #ff997e; font-weight: 600; }
+
+    footer { display: flex; justify-content: space-between; gap: 16px; padding: 17px 0 20px; border-top: 1px solid var(--line); color: #73776d; font: 9px var(--mono); text-transform: uppercase; letter-spacing: .07em; }
+    .footer-status { color: var(--acid); }
+
+    @keyframes rise { from { opacity: 0; transform: translateY(13px); } to { opacity: 1; transform: translateY(0); } }
+
+    @media (max-width: 760px) {
+      .page { width: min(100% - 36px, 500px); }
+      .topbar { height: 66px; }
+      main { grid-template-columns: 1fr; gap: 34px; padding: 48px 0 44px; }
+      h1 { font-size: clamp(58px, 15vw, 82px); }
+      .intro-copy { margin-top: 18px; font-size: 13px; }
+      .control-panel { max-width: 420px; width: 100%; justify-self: center; }
+      footer { font-size: 8px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="topbar">
+      <div class="brand"><span class="brand-mark" aria-hidden="true"></span> FIELD / 01</div>
+      <div class="mode"><span class="mode-dot" aria-hidden="true"></span> Remote control</div>
+    </header>
+
+    <main>
+      <section class="intro" aria-labelledby="page-title">
+        <p class="eyebrow">A signal, a turning point</p>
+        <h1 id="page-title">to a new<br><span>Beginning.</span></h1>
+        <p class="intro-copy">Set a speed and request motion through a short-lived command lease. The controller stops if its connection goes stale.</p>
+      </section>
+
+      <section class="control-panel" aria-label="Remote motor control">
+        <div class="panel-head">
+          <h2 class="panel-title">Motor / 01</h2>
+          <span class="panel-index">CTRL—A</span>
+        </div>
+
+        <div class="dial-area">
+          <span class="dial-label">Speed setpoint</span>
+          <div class="dial" id="dial" style="--value: 0; --angle: -135deg">
+            <input id="speed" type="range" min="0" max="100" value="0" aria-label="Motor speed setpoint" aria-valuetext="0 percent">
+            <div class="dial-center" aria-hidden="true">
+              <span class="dial-value" id="speed-value">00</span>
+              <span class="dial-unit">Percent</span>
+            </div>
+          </div>
+          <div class="dial-scale" aria-hidden="true"><span>0</span><span>50</span><span>100</span></div>
+        </div>
+
+        <div class="telemetry" aria-live="polite">
+          <div class="readout"><span class="readout-label">Motor state</span><span class="readout-value" id="motor-state">STOPPED</span></div>
+          <div class="readout"><span class="readout-label">Output</span><span class="readout-value" id="output-value">0 %</span></div>
+        </div>
+
+        <div class="action-row">
+          <div class="switch-copy">
+            <span class="switch-title">Motor power</span>
+            <span class="switch-caption" id="switch-caption">Connect to control</span>
+          </div>
+          <button class="switch" id="motor-switch" type="button" role="switch" aria-checked="false" aria-label="Motor power" disabled></button>
+        </div>
+        <form class="login-form" id="login-form">
+          <input id="control-password" type="password" autocomplete="current-password" placeholder="Control password" aria-label="Control password" required>
+          <button id="login-button" type="submit">Connect</button>
+        </form>
+        <p class="connection-copy" id="connection-copy" role="status" aria-live="polite">Sign in to connect to the controller.</p>
+        <p class="notice"><strong>Prototype control only.</strong> Use a hardwired emergency stop and a properly rated motor controller. Never connect an ESP32 GPIO directly to a motor.</p>
+      </section>
+    </main>
+
+    <footer>
+      <span>Online Motor Controller</span>
+      <span class="footer-status" id="connection-status">Server not connected</span>
+      <span>Prototype / 2026</span>
+    </footer>
+  </div>
+
+  <script>
+    const speed = document.querySelector('#speed');
+    const dial = document.querySelector('#dial');
+    const speedValue = document.querySelector('#speed-value');
+    const outputValue = document.querySelector('#output-value');
+    const motorState = document.querySelector('#motor-state');
+    const motorSwitch = document.querySelector('#motor-switch');
+    const switchCaption = document.querySelector('#switch-caption');
+    const loginForm = document.querySelector('#login-form');
+    const passwordInput = document.querySelector('#control-password');
+    const loginButton = document.querySelector('#login-button');
+    const connectionCopy = document.querySelector('#connection-copy');
+    const connectionStatus = document.querySelector('#connection-status');
+    let authenticated = false;
+    let deviceOnline = false;
+    let motorOn = false;
+    let commandBusy = false;
+    let initialized = false;
+    let statusBusy = false;
+
+    function setMotorState(isOn) {
+      motorOn = isOn;
+      motorSwitch.setAttribute('aria-checked', String(isOn));
+      motorState.textContent = isOn ? 'RUNNING' : 'STOPPED';
+      switchCaption.textContent = isOn ? 'Lease active' : authenticated ? 'Ready to start' : 'Connect to control';
+      motorSwitch.setAttribute('aria-label', `Turn motor ${isOn ? 'off' : 'on'}`);
+      updateSpeed();
+    }
+
+    function updateControlAvailability() {
+      motorSwitch.disabled = !authenticated || commandBusy || (!deviceOnline && !motorOn);
+      loginForm.hidden = authenticated;
+      speed.disabled = !authenticated;
+    }
+
+    async function request(url, options = {}) {
+      const response = await fetch(url, {
+        ...options,
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json', ...options.headers }
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || `Request failed (${response.status})`);
+      return data;
+    }
+
+    async function refreshStatus() {
+      if (statusBusy) return;
+      statusBusy = true;
+      try {
+        const status = await request('/api/status');
+        authenticated = status.authenticated;
+        deviceOnline = status.deviceOnline;
+        connectionStatus.textContent = deviceOnline ? 'ESP32 online' : 'ESP32 offline';
+        connectionCopy.textContent = authenticated
+          ? deviceOnline ? 'Controller connected. Commands expire automatically.' : 'Signed in. Waiting for the ESP32 to connect.'
+          : 'Sign in to connect to the controller.';
+        if (!initialized && authenticated) {
+          speed.value = String(status.speed);
+          setMotorState(status.enabled && status.deviceOnline);
+          initialized = true;
+        }
+        if (motorOn && !deviceOnline) setMotorState(false);
+      } catch (error) {
+        connectionStatus.textContent = 'Server unavailable';
+        connectionCopy.textContent = error.message;
+      } finally {
+        updateControlAvailability();
+        statusBusy = false;
+      }
+    }
+
+    async function sendCommand(enabled) {
+      if (commandBusy) return;
+      commandBusy = true;
+      updateControlAvailability();
+      try {
+        const data = await request('/api/command', {
+          method: 'POST',
+          body: JSON.stringify({ enabled, speed: Number(speed.value) })
+        });
+        setMotorState(data.enabled);
+        connectionCopy.textContent = data.enabled ? 'Run lease renewed.' : 'Stop command sent.';
+      } catch (error) {
+        if (enabled) setMotorState(false);
+        connectionCopy.textContent = error.message;
+        await refreshStatus();
+      } finally {
+        commandBusy = false;
+        updateControlAvailability();
+      }
+    }
+
+    function updateSpeed() {
+      const value = Number(speed.value);
+      const angle = -135 + value * 2.7;
+      dial.style.setProperty('--value', value);
+      dial.style.setProperty('--angle', `${angle}deg`);
+      speedValue.textContent = String(value).padStart(2, '0');
+      speed.setAttribute('aria-valuetext', `${value} percent`);
+      outputValue.textContent = `${motorOn ? value : 0} %`;
+    }
+
+    loginForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      loginButton.disabled = true;
+      connectionCopy.textContent = 'Connecting...';
+      try {
+        await request('/api/login', { method: 'POST', body: JSON.stringify({ password: passwordInput.value }) });
+        passwordInput.value = '';
+        initialized = false;
+        await refreshStatus();
+      } catch (error) {
+        connectionCopy.textContent = error.message;
+      } finally {
+        loginButton.disabled = false;
+      }
+    });
+
+    speed.addEventListener('input', () => {
+      updateSpeed();
+      if (motorOn) sendCommand(true);
+    });
+    motorSwitch.addEventListener('click', () => sendCommand(!motorOn));
+    updateSpeed();
+    updateControlAvailability();
+    refreshStatus();
+    setInterval(refreshStatus, 2000);
+    setInterval(() => {
+      if (authenticated && motorOn && !commandBusy) sendCommand(true);
+    }, 2000);
+  </script>
+</body>
+</html>

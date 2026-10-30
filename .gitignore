@@ -1,0 +1,4 @@
+.env
+node_modules/
+data/
+esp32/secrets.h
