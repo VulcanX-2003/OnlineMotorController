@@ -53,7 +53,7 @@
       border-bottom: 1px solid var(--line);
     }
 
-    .brand, .mode, .eyebrow, .readout-label, .dial-label, .footnote {
+    .brand, .mode, .eyebrow, .readout-label, .footnote {
       font-family: var(--mono);
       text-transform: uppercase;
       letter-spacing: .08em;
@@ -115,65 +115,6 @@
     .panel-head { display: flex; justify-content: space-between; align-items: center; padding-bottom: 18px; border-bottom: 1px solid var(--line); }
     .panel-title { margin: 0; font-size: 12px; font-weight: 600; }
     .panel-index { color: var(--muted); font: 10px var(--mono); }
-
-    .dial-area { padding: 25px 0 22px; display: grid; justify-items: center; }
-    .dial-label { color: var(--muted); font-size: 9px; margin-bottom: 17px; }
-
-    .dial {
-      --angle: -135deg;
-      position: relative;
-      width: 190px;
-      aspect-ratio: 1;
-      display: grid;
-      place-items: center;
-      border-radius: 50%;
-      background: conic-gradient(from 225deg, var(--acid) 0deg, var(--acid) calc(var(--value, 0) * 2.7deg), #34372e calc(var(--value, 0) * 2.7deg), #34372e 270deg, transparent 270deg 360deg);
-      filter: drop-shadow(0 0 14px #d5f3291c);
-    }
-
-    .dial::before {
-      content: '';
-      position: absolute;
-      inset: 5px;
-      border-radius: 50%;
-      background: radial-gradient(circle at 35% 28%, #24271f, #11120f 70%);
-      border: 1px solid #41443a;
-    }
-
-    .dial::after {
-      content: '';
-      position: absolute;
-      width: 3px;
-      height: 20px;
-      top: 15px;
-      left: calc(50% - 1.5px);
-      border-radius: 3px;
-      background: var(--acid);
-      transform-origin: 50% 80px;
-      transform: rotate(var(--angle));
-      box-shadow: 0 0 9px #d5f36a;
-      pointer-events: none;
-    }
-
-    .dial input {
-      position: absolute;
-      inset: 0;
-      z-index: 2;
-      width: 100%;
-      height: 100%;
-      margin: 0;
-      opacity: 0;
-      cursor: grab;
-      touch-action: none;
-    }
-
-    .dial input:active { cursor: grabbing; }
-    .dial input:focus-visible { outline: 2px solid var(--acid); outline-offset: 7px; border-radius: 50%; }
-
-    .dial-center { z-index: 1; text-align: center; pointer-events: none; }
-    .dial-value { display: block; font-size: 42px; font-weight: 500; letter-spacing: -.06em; line-height: 1; }
-    .dial-unit { display: block; margin-top: 7px; color: var(--muted); font: 9px var(--mono); text-transform: uppercase; letter-spacing: .12em; }
-    .dial-scale { width: 218px; display: flex; justify-content: space-between; margin-top: 14px; color: #777b70; font: 9px var(--mono); }
 
     .telemetry { display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
     .readout { padding: 14px 0; }
@@ -244,7 +185,7 @@
       <section class="intro" aria-labelledby="page-title">
         <p class="eyebrow">A signal, a turning point</p>
         <h1 id="page-title">to a new<br><span>Beginning.</span></h1>
-        <p class="intro-copy">Set a speed and request motion through a short-lived command lease. The controller stops if its connection goes stale.</p>
+        <p class="intro-copy">One switch sends a short-lived start or stop command. The controller stops if its connection goes stale.</p>
       </section>
 
       <section class="control-panel" aria-label="Remote motor control">
@@ -253,21 +194,9 @@
           <span class="panel-index">CTRL—A</span>
         </div>
 
-        <div class="dial-area">
-          <span class="dial-label">Speed setpoint</span>
-          <div class="dial" id="dial" style="--value: 0; --angle: -135deg">
-            <input id="speed" type="range" min="0" max="100" value="0" aria-label="Motor speed setpoint" aria-valuetext="0 percent">
-            <div class="dial-center" aria-hidden="true">
-              <span class="dial-value" id="speed-value">00</span>
-              <span class="dial-unit">Percent</span>
-            </div>
-          </div>
-          <div class="dial-scale" aria-hidden="true"><span>0</span><span>50</span><span>100</span></div>
-        </div>
-
         <div class="telemetry" aria-live="polite">
           <div class="readout"><span class="readout-label">Motor state</span><span class="readout-value" id="motor-state">STOPPED</span></div>
-          <div class="readout"><span class="readout-label">Output</span><span class="readout-value" id="output-value">0 %</span></div>
+          <div class="readout"><span class="readout-label">Controller</span><span class="readout-value" id="device-state">OFFLINE</span></div>
         </div>
 
         <div class="action-row">
@@ -294,11 +223,8 @@
   </div>
 
   <script>
-    const speed = document.querySelector('#speed');
-    const dial = document.querySelector('#dial');
-    const speedValue = document.querySelector('#speed-value');
-    const outputValue = document.querySelector('#output-value');
     const motorState = document.querySelector('#motor-state');
+    const deviceState = document.querySelector('#device-state');
     const motorSwitch = document.querySelector('#motor-switch');
     const switchCaption = document.querySelector('#switch-caption');
     const loginForm = document.querySelector('#login-form');
@@ -319,13 +245,11 @@
       motorState.textContent = isOn ? 'RUNNING' : 'STOPPED';
       switchCaption.textContent = isOn ? 'Lease active' : authenticated ? 'Ready to start' : 'Connect to control';
       motorSwitch.setAttribute('aria-label', `Turn motor ${isOn ? 'off' : 'on'}`);
-      updateSpeed();
     }
 
     function updateControlAvailability() {
       motorSwitch.disabled = !authenticated || commandBusy || (!deviceOnline && !motorOn);
       loginForm.hidden = authenticated;
-      speed.disabled = !authenticated;
     }
 
     async function request(url, options = {}) {
@@ -346,16 +270,16 @@
         const status = await request('/api/status');
         authenticated = status.authenticated;
         deviceOnline = status.deviceOnline;
+        deviceState.textContent = deviceOnline ? 'ONLINE' : 'OFFLINE';
         connectionStatus.textContent = deviceOnline ? 'ESP32 online' : 'ESP32 offline';
         connectionCopy.textContent = authenticated
           ? deviceOnline ? 'Controller connected. Commands expire automatically.' : 'Signed in. Waiting for the ESP32 to connect.'
           : 'Sign in to connect to the controller.';
         if (!initialized && authenticated) {
-          speed.value = String(status.speed);
           setMotorState(status.enabled && status.deviceOnline);
           initialized = true;
         }
-        if (motorOn && !deviceOnline) setMotorState(false);
+        if (motorOn && (!status.enabled || !deviceOnline)) setMotorState(false);
       } catch (error) {
         connectionStatus.textContent = 'Server unavailable';
         connectionCopy.textContent = error.message;
@@ -372,7 +296,7 @@
       try {
         const data = await request('/api/command', {
           method: 'POST',
-          body: JSON.stringify({ enabled, speed: Number(speed.value) })
+          body: JSON.stringify({ enabled })
         });
         setMotorState(data.enabled);
         connectionCopy.textContent = data.enabled ? 'Run lease renewed.' : 'Stop command sent.';
@@ -384,16 +308,6 @@
         commandBusy = false;
         updateControlAvailability();
       }
-    }
-
-    function updateSpeed() {
-      const value = Number(speed.value);
-      const angle = -135 + value * 2.7;
-      dial.style.setProperty('--value', value);
-      dial.style.setProperty('--angle', `${angle}deg`);
-      speedValue.textContent = String(value).padStart(2, '0');
-      speed.setAttribute('aria-valuetext', `${value} percent`);
-      outputValue.textContent = `${motorOn ? value : 0} %`;
     }
 
     loginForm.addEventListener('submit', async (event) => {
@@ -412,12 +326,7 @@
       }
     });
 
-    speed.addEventListener('input', () => {
-      updateSpeed();
-      if (motorOn) sendCommand(true);
-    });
     motorSwitch.addEventListener('click', () => sendCommand(!motorOn));
-    updateSpeed();
     updateControlAvailability();
     refreshStatus();
     setInterval(refreshStatus, 2000);

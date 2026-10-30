@@ -1,6 +1,6 @@
 # Online Motor Controller
 
-This prototype serves the control page and a small SQLite-backed API. The browser authenticates with `CONTROL_PASSWORD`; the ESP32 polls with its separate `DEVICE_TOKEN`. Browser commands carry an 8-second lease renewed every 2 seconds. The API refuses a start unless the ESP32 polled within the last 7 seconds, and the firmware turns its outputs off if a poll fails or its 7-second local lease expires.
+This prototype serves the control page and a small SQLite-backed API. The page has a single on/off switch; motor speed is configured on the motor controller, not from the website. The browser authenticates with `CONTROL_PASSWORD`; the ESP32 polls with its separate `DEVICE_TOKEN`. Run commands carry an 8-second lease renewed every 2 seconds. The API refuses a start unless the ESP32 polled within the last 7 seconds, and the firmware turns its output off if a poll fails or its 7-second local lease expires.
 
 ## Run locally
 
@@ -16,7 +16,7 @@ To generate secrets on Windows PowerShell, run `node -e "console.log(require('no
 1. Deploy this service behind an HTTPS reverse proxy or managed HTTPS host. Do not expose the service over plain HTTP on the public internet. Keep the Node service and its SQLite data on persistent storage.
 2. Copy `esp32/secrets.example.h` to `esp32/secrets.h`; set Wi-Fi credentials, the exact `DEVICE_TOKEN`, the HTTPS hostname, and the trusted CA certificate. Never replace certificate validation with `setInsecure()`.
 3. Install the ArduinoJson library and use an ESP32 Arduino core 3.x. Upload `esp32/motor_controller.ino`.
-4. Connect the ESP32 output pins only to compatible, isolated enable/PWM inputs on a correctly rated motor controller. The example expects an E-stop OK contact that reads LOW when healthy and HIGH when tripped/open.
+4. Configure a safe fixed operating speed on the motor controller itself. Connect ESP32 GPIO 25 only to a compatible, isolated enable input on a correctly rated motor controller. The example expects an E-stop OK contact that reads LOW when healthy and HIGH when tripped/open.
 
 The E-stop must interrupt the motor controller's enable/safety circuit independently of the ESP32 and internet connection. This prototype is not a safety-rated controller. Test with the motor power stage disconnected first, then validate the entire installation locally with a qualified person before any remote operation. Do not use this design for life-safety, hazardous machinery, or unattended operation.
 

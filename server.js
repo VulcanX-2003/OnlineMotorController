@@ -27,12 +27,11 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS command (
     id INTEGER PRIMARY KEY CHECK (id = 1),
     enabled INTEGER NOT NULL DEFAULT 0,
-    speed INTEGER NOT NULL DEFAULT 0,
     lease_until INTEGER NOT NULL DEFAULT 0,
     updated_at INTEGER NOT NULL DEFAULT 0
   );
-  INSERT OR IGNORE INTO command (id, enabled, speed, lease_until, updated_at)
-  VALUES (1, 0, 0, 0, 0);
+  INSERT OR IGNORE INTO command (id, enabled, lease_until, updated_at)
+  VALUES (1, 0, 0, 0);
   CREATE TABLE IF NOT EXISTS device (
     id INTEGER PRIMARY KEY CHECK (id = 1),
     last_seen INTEGER NOT NULL DEFAULT 0
@@ -123,23 +122,19 @@ app.post('/api/logout', sameOrigin, (req, res) => {
 
 app.get('/api/status', (req, res) => {
   const now = Date.now();
-  const command = db.prepare('SELECT enabled, speed, lease_until FROM command WHERE id = 1').get();
+  const command = db.prepare('SELECT enabled, lease_until FROM command WHERE id = 1').get();
   const device = db.prepare('SELECT last_seen FROM device WHERE id = 1').get();
   const enabled = Boolean(command.enabled && command.lease_until > now);
   res.json({
     authenticated: isAuthenticated(req),
     deviceOnline: now - device.last_seen <= deviceOnlineMs,
-    enabled,
-    speed: enabled ? command.speed : 0
+    enabled
   });
 });
 
 app.post('/api/command', sameOrigin, requireOperator, (req, res) => {
-  const { enabled, speed } = req.body;
-  if (typeof enabled !== 'boolean' || !Number.isInteger(speed) || speed < 0 || speed > 100) {
-    return res.status(400).json({ error: 'Expected enabled and an integer speed from 0 to 100.' });
-  }
-  if (enabled && speed === 0) return res.status(400).json({ error: 'Set a speed above 0 before starting.' });
+  const { enabled } = req.body;
+  if (typeof enabled !== 'boolean') return res.status(400).json({ error: 'Expected enabled to be true or false.' });
 
   const now = Date.now();
   const device = db.prepare('SELECT last_seen FROM device WHERE id = 1').get();
@@ -147,17 +142,17 @@ app.post('/api/command', sameOrigin, requireOperator, (req, res) => {
     return res.status(409).json({ error: 'ESP32 is offline. Start is blocked.' });
   }
 
-  db.prepare(`UPDATE command SET enabled = ?, speed = ?, lease_until = ?, updated_at = ? WHERE id = 1`)
-    .run(enabled ? 1 : 0, enabled ? speed : 0, enabled ? now + leaseMs : now, now);
-  res.json({ enabled, speed: enabled ? speed : 0, leaseMs: enabled ? leaseMs : 0 });
+  db.prepare(`UPDATE command SET enabled = ?, lease_until = ?, updated_at = ? WHERE id = 1`)
+    .run(enabled ? 1 : 0, enabled ? now + leaseMs : now, now);
+  res.json({ enabled, leaseMs: enabled ? leaseMs : 0 });
 });
 
 app.get('/api/device/command', requireDevice, (req, res) => {
   const now = Date.now();
   db.prepare('UPDATE device SET last_seen = ? WHERE id = 1').run(now);
-  const command = db.prepare('SELECT enabled, speed, lease_until FROM command WHERE id = 1').get();
+  const command = db.prepare('SELECT enabled, lease_until FROM command WHERE id = 1').get();
   const enabled = Boolean(command.enabled && command.lease_until > now);
-  res.json({ enabled, speed: enabled ? command.speed : 0, leaseRemainingMs: enabled ? command.lease_until - now : 0 });
+  res.json({ enabled, leaseRemainingMs: enabled ? command.lease_until - now : 0 });
 });
 
 app.listen(port, '0.0.0.0', () => {
